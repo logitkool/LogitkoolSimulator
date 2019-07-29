@@ -30,7 +30,7 @@ void Main()
 
 		blocks[code.block]
 			.resized(r.size)
-			.rotated(code.dir * 90_deg)
+			.rotated(code.GetDir() * 90_deg)
 			.draw(r.pos);
 	};
 	
@@ -62,12 +62,14 @@ void Main()
 					if (select.block == Block::Core 
 						&& cells.any([](const Code & code) { return code.block == Block::Core; }))
 					{
-						// コアブロックはひとつだけ
+						// 一つ以上のコアブロックは追加できない
 					}
 					else
 					{
+						// フィールドにブロックを追加
 						code = Code(select);
-
+						code.SetId();
+						
 						if (select.block == Block::Core)
 						{
 							corePos = Point(x, y);
@@ -80,7 +82,7 @@ void Main()
 					code.block = Block::None;
 				}
 
-				font(code.GetId()).draw(rect.pos, Palette::Black);
+				font(code.GetId()).draw(rect.pos, Palette::Purple);
 			}
 		}
 
@@ -93,7 +95,6 @@ void Main()
 			if (rect.leftClicked())
 			{
 				select.block = (Block)i;
-				select.dir = Direction::Down;
 			}
 		}
 
@@ -101,17 +102,47 @@ void Main()
 		if (select.block != Block::None)
 		{
 			blocks[select.block]
-				.rotated(select.dir * 90_deg)
+				.rotated(select.GetDir() * 90_deg)
 				.draw(600, 400);
 		}
 
-		if (Mouse::Wheel() > 0)
+		if (Mouse::Wheel() > 0 || KeyLeft.down())
 		{
-			select.dir = (Direction)((select.dir + 1) % 4);
+			select.SetDir((Direction)((select.GetDir() + 1) % 4));
 		}
-		else if (Mouse::Wheel() < 0)
+		else if (Mouse::Wheel() < 0 || KeyRight.down())
 		{
-			select.dir = (Direction)((select.dir - 1) % 4);
+			select.SetDir((Direction)((select.GetDir() + 4 - 1) % 4));
 		}
+
+
+		if (KeySpace.down())
+		{
+			auto& core = cells[corePos];
+			auto nextToCore = corePos + DirUtil::DirToPoint(core.GetDir());
+			
+			Packet corePkt = { TMode::Echo, core.GetId(), core.GetDir() };
+
+			int step = 100;
+			Array<int> idList;
+			auto pos = nextToCore;
+			auto pkt = cells[pos].Input(corePkt);
+			while (pkt.id != -1)
+			{
+				pkt.Print();
+				pos += DirUtil::DirToPoint(pkt.dir);
+
+				if (cells[pos].block == Block::Core)
+				{
+					idList.push_back(pkt.id);
+					pkt = corePkt;
+					pos = nextToCore;
+				}
+				pkt = cells[pos].Input(pkt);
+			}
+
+			Print << idList;
+		}
+
 	}
 }

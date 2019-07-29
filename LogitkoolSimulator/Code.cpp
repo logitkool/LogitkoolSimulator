@@ -1,47 +1,66 @@
 #include "Code.h"
 
 int Code::count;
-void Code::Input(Direction input_dir)
+Packet Code::Input(Packet packet)
 {
-	if (trans_mode[input_dir])
+	if (is_recieved)
 	{
-		throw std::invalid_argument("送信モードのポートに受信されました");
+		if (packet.mode == TMode::Echo)
+		{
+			return { TMode::Echo, packet.id, dir };
+		}
+		else
+		{
+			return { packet.mode, packet.id, core_dir };
+		}
 	}
 
+	is_recieved = true;
+	core_dir = DirUtil::Invert(packet.dir);
 
-	if (!is_recieved)
-	{
-		is_recieved = true;
-
-		core_dir = input_dir;
-
-		trans_mode[core_dir] = true;
-	}
-
+	return { TMode::Response, id, core_dir };
 }
 
 void Code::SetDir(Direction _dir)
+{
+	dir = _dir;
+}
+
+Direction Code::GetDir() const
+{
+	return dir;
+}
+
+int Code::GetId() const
+{
+	return id;
+}
+
+void Code::SetId()
 {
 	if (id == -1)
 	{
 		id = count;
 		count++;
 	}
-
-	dir = _dir;
 }
 
 Code::Code()
 {
 	block = Block::None;
 	dir = Direction::Down;
-
-	for (int i = 0; i < 4; i++)
-	{
-		trans_mode[(Direction)i] = false;
-	}
+	is_recieved = false;
 
 	id = -1;
+}
+
+Code::Code(const Code& code)
+{
+	block = code.block;
+	core_dir = code.core_dir;
+	dir = code.dir;
+	id = code.id;
+	is_recieved = code.is_recieved;
 }
 
 

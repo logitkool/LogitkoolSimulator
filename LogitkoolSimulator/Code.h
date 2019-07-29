@@ -9,15 +9,20 @@ public:
 	// ブロックの種類
 	Block block;
 	
-	// 送信モードか
-	std::map<Direction, bool> trans_mode;
-
 	// 受信
-	void Input(Direction input_dir);
+	Packet Input(Packet packet);
 
 	void SetDir(Direction _dir);
 
+	Direction GetDir() const;
+
+	int GetId() const;
+
+	void SetId();
+
 private:
+	bool recieve_mode[4] = { true, true, true, true };
+
 	// 初めの受信方向
 	Direction core_dir;
 
@@ -33,6 +38,7 @@ private:
 
 public:
 	Code();
+	Code(const Code& code);
 	~Code();
 
 	
