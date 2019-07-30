@@ -22,7 +22,7 @@ Packet Code::Input(Packet packet)
 
 	is_recieved = true;
 	core_dir = DirUtil::Invert(packet.dir);
-
+	
 	return { TMode::Response, id, core_dir, packet.count - 1 };
 }
 

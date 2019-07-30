@@ -21,8 +21,6 @@ public:
 	void SetId();
 
 private:
-	bool recieve_mode[4] = { true, true, true, true };
-
 	// ‰‚ß‚ÌóM•ûŒü
 	Direction core_dir;
 
