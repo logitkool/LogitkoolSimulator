@@ -129,7 +129,6 @@ void Main()
 			auto pkt = cells[pos].Input(corePkt);
 			while (pkt.id != -1)
 			{
-				pkt.Print();
 				pos += DirUtil::DirToPoint(pkt.dir);
 
 				if (cells[pos].block == Block::Core)
@@ -138,6 +137,7 @@ void Main()
 					pkt = corePkt;
 					pos = nextToCore;
 				}
+
 				pkt = cells[pos].Input(pkt);
 			}
 

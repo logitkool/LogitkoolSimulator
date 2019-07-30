@@ -64,6 +64,7 @@ struct Packet
 	TMode mode;
 	int id;
 	Direction dir;
+	int count = 100;
 
 	void Print()
 	{

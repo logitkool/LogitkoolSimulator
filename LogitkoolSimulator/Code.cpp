@@ -3,22 +3,27 @@
 int Code::count;
 Packet Code::Input(Packet packet)
 {
+	if (packet.count < 0)
+	{
+		return { TMode::Response, -1, dir, -1 };
+	}
+
 	if (is_recieved)
 	{
 		if (packet.mode == TMode::Echo)
 		{
-			return { TMode::Echo, packet.id, dir };
+			return { TMode::Echo, packet.id, dir, packet.count - 1 };
 		}
 		else
 		{
-			return { packet.mode, packet.id, core_dir };
+			return { packet.mode, packet.id, core_dir, packet.count - 1 };
 		}
 	}
 
 	is_recieved = true;
 	core_dir = DirUtil::Invert(packet.dir);
 
-	return { TMode::Response, id, core_dir };
+	return { TMode::Response, id, core_dir, packet.count - 1 };
 }
 
 void Code::SetDir(Direction _dir)
