@@ -1,6 +1,29 @@
 {
     "paths" : [
-        { "0x81" : "core.png" },
-        { "0x11" : "move.png" }
+        {"0x11" : "MoveFront.png"},
+        {"0x19" : "MoveBack.png"},
+
+        {"0x21" : "TurnLeft.png"},
+        {"0x29" : "TurnRight.png"},
+        {"0x22" : "TurnLeft90.png"},
+        {"0x2A" : "TurnRight90.png"},
+
+        {"0x31" : "ShakeLeftHand.png"},
+        {"0x35" : "ShakeRightHand.png"},
+        {"0x39" : "ShakeBothHands.png"},
+
+        {"0x41" : "ShakeLeftHead.png"},
+        {"0x49" : "ShakeRightHead.png"},
+
+        {"0x81" : "PureCore.png"},
+
+        {"0x91" : "IfBrightness.png"},
+        {"0x92" : "IfObject.png"},
+
+        {"0xC1" : "For1.png"},
+        {"0xC2" : "For2.png"},
+        {"0xC3" : "For3.png"},
+        {"0xC4" : "For4.png"},
+        {"0xC5" : "For5.png"}
     ]
 }
