@@ -1,12 +1,14 @@
 ﻿
-# include <Siv3D.hpp> // OpenSiv3D v0.3.2
+#include <Siv3D.hpp> // OpenSiv3D v0.3.2
+
 #include "Util.h"
-#include "Code.h"
+#include "MoveBlock.h"
+#include "CoreBlock.h"
 
 void Main()
 {
 	const Font font(10);
-	
+
 	const int size = 15;
 	const int cellSize = 35;
 	constexpr Point offset(20, 40);
@@ -14,26 +16,22 @@ void Main()
 	const int paletteSize = 55;
 	constexpr Point palletePos(600, 40);
 
-	Array<Texture> blocks{ Texture(U"block/core.png"), Texture(U"block/move.png") };
+	JSONReader json(U"./block/textures.json");
+	HashTable<Role, Texture> textureTable = TextureUtil::GetTextureTable(json, U"./block/");
 
-	Grid<Code> cells(cellSize, cellSize);
+	Grid<Optional<Block>> cells(cellSize, cellSize);
 
-	Code select = Code();
-	Point corePos = Point();
+	BlockId select = { Role::None, 0x80, 0x01 };
+	Direction selectedDir = Direction::Down;
 
-	auto cellDraw = [blocks](const Code& code, const Rect & r)
+	auto cellDraw = [textureTable](const Role& role, const Direction& dir, const Rect& r)
 	{
-		if (code.block == Block::None)
-		{
-			return;
-		}
-
-		blocks[code.block]
+		textureTable.at(role)
 			.resized(r.size)
-			.rotated(code.GetDir() * 90_deg)
+			.rotated(static_cast<int>(dir) * 90_deg)
 			.draw(r.pos);
 	};
-	
+
 	while (System::Update())
 	{
 		for (auto y = 0; y < size; y++)
@@ -42,85 +40,113 @@ void Main()
 			{
 				const Rect rect = Rect(x * cellSize, y * cellSize, cellSize).movedBy(offset);
 
-				auto& code = cells[y][x];
+				auto& blk = cells[y][x];
 
-				if (code.block != Block::None)
+				if (blk.has_value())
 				{
-					cellDraw(code, rect);
+					cellDraw(blk->GetRole(), blk->GetDir(), rect);
 				}
 
 				// 格子の描画
 				rect.drawFrame(1, Palette::Green);
 
-				if (rect.mouseOver())
+				if (rect.mouseOver() && select.RoleType != Role::None)
 				{
-					cellDraw(select, rect);
+					cellDraw(select.RoleType, selectedDir, rect);
 				}
 
 				if (rect.leftClicked())
 				{
-					if (select.block == Block::Core 
-						&& cells.any([](const Code & code) { return code.block == Block::Core; }))
+					if (select.RoleType == Role::PureCore
+						&& cells.any([](const Optional<Block>& blk) { return blk.has_value() && blk->GetRole() == Role::PureCore; }))
 					{
 						// 一つ以上のコアブロックは追加できない
 					}
 					else
 					{
 						// フィールドにブロックを追加
-						code = Code(select);
-						code.SetId();
-						
-						if (select.block == Block::Core)
+						if (select.RoleType != Role::None)
 						{
-							corePos = Point(x, y);
+							if (TypeUtil::IsSameType(Type::Core, select.RoleType))
+							{
+								// コアブロック
+								blk = CoreBlock(select);
+							}
+							else if (TypeUtil::IsSameType(Type::If, select.RoleType) || TypeUtil::IsSameType(Type::For, select.RoleType))
+							{
+								// 分岐/繰り返しブロック
+								// not implemented
+							}
+							else
+							{
+								// 動作ブロック
+								blk = MoveBlock(select);
+							}
+							blk->SetDir(selectedDir);
+
+							// increment id
+							if (select.Uid_L == 0xFF)
+							{
+								select.Uid_H++;
+								select.Uid_L = 0x00;
+							}
+							select.Uid_L++;
+
 						}
 					}
 				}
 
 				if (rect.rightClicked())
 				{
-					code.block = Block::None;
+					blk = none;
 				}
 
-				font(code.GetId()).draw(rect.pos, Palette::Purple);
+				BlockId id = blk.has_value() ? blk->Id() : None;
+				font(U"{:02X}\n{:02X}.{:02X}"_fmt(id.RoleId(), id.Uid_H, id.Uid_L)).draw(rect.pos, Palette::Purple);
 			}
 		}
 
-		for (auto i = 0; i < blocks.size(); i++)
 		{
-			const Rect rect = Rect(paletteSize, i * paletteSize, paletteSize).movedBy(palletePos);
-
-			rect(blocks[i]).draw();
-
-			if (rect.leftClicked())
+			int i = 0;
+			for (const auto& [key, value] : textureTable)
 			{
-				select.block = (Block)i;
+				const Rect rect = Rect(paletteSize, i * paletteSize, paletteSize).movedBy(palletePos);
+
+				rect(value).draw();
+
+				if (rect.leftClicked())
+				{
+					select.RoleType = key;
+				}
+
+				i++;
 			}
 		}
 
 
-		if (select.block != Block::None)
+		if (select.RoleType != Role::None)
 		{
-			blocks[select.block]
-				.rotated(select.GetDir() * 90_deg)
+			// 選択中のブロックを右下に描画
+			textureTable[select.RoleType]
+				.rotated(static_cast<int>(selectedDir) * 90_deg)
 				.draw(600, 400);
 		}
 
 		if (Mouse::Wheel() > 0 || KeyLeft.down())
 		{
-			select.SetDir((Direction)((select.GetDir() + 1) % 4));
+			selectedDir = (Direction)((static_cast<int>(selectedDir) + 1) % 4);
 		}
 		else if (Mouse::Wheel() < 0 || KeyRight.down())
 		{
-			select.SetDir((Direction)((select.GetDir() + 4 - 1) % 4));
+			selectedDir = (Direction)((static_cast<int>(selectedDir) + 4 - 1) % 4);
 		}
 
 
 		if (KeySpace.down())
 		{
-			auto& core = cells[corePos];
+			/*auto& core = cells[corePos];
 			auto nextToCore = corePos + DirUtil::DirToPoint(core.GetDir());
-			
+
 			Packet corePkt = { TMode::Echo, core.GetId(), core.GetDir() };
 
 			int step = 100;
@@ -141,7 +167,7 @@ void Main()
 				pkt = cells[pos].Input(pkt);
 			}
 
-			Print << idList;
+			Print << idList;*/
 		}
 
 	}

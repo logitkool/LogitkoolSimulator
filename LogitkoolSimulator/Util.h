@@ -1,29 +1,55 @@
 #pragma once
 #include <Siv3D.hpp>
+#include <map>
 
-#define STR(var) (#var)
+#include "Type.h"
 
-enum Block
+class TypeUtil
 {
-	Core,
-	Move,
-	None
+public:
+	static bool IsSameType(Type type, Role role)
+	{
+		return (static_cast<uint8_t>(role) & 0xF0) == static_cast<uint8_t>(type);
+	}
+
+	static int GetInterval(Role role)
+	{
+		switch (role)
+		{
+		case Role::MoveFront:
+		case Role::MoveBack:          return 6000;
+
+		case Role::TurnLeft:
+		case Role::TurnRight:         return 8000;
+
+		case Role::TurnLeft90:
+		case Role::TurnRight90:       return 12000;
+
+		case Role::ShakeLeftHand:
+		case Role::ShakeRightHand:
+		case Role::ShakeBothHands:    return 3000;
+
+		case Role::ShakeLeftHead:
+		case Role::ShakeRightHead:    return 4000;
+
+		case Role::IfBrightness:
+		case Role::IfObject:
+		case Role::For1:
+		case Role::For2:
+		case Role::For3:
+		case Role::For4:
+		case Role::For5:              return 1000;
+
+		default:                      return 0;
+		}
+	}
+
+private:
+	TypeUtil() {}
+
 };
 
-enum Direction
-{
-	Down,
-	Left,
-	Up,
-	Right
-};
-
-enum TMode
-{
-	Echo, Response
-};
-
-static class DirUtil
+class DirUtil
 {
 public:
 	static Point DirToPoint(Direction dir)
@@ -57,20 +83,31 @@ public:
 		}
 	}
 
+private:
+	DirUtil() {}
+
 };
 
-struct Packet
+class TextureUtil
 {
-	TMode mode;
-	int id;
-	Direction dir;
-	int count = 100;
-
-	void Print()
+public:
+	static HashTable<Role, Texture> GetTextureTable(const JSONValue& object, const String& basePath)
 	{
-		s3d::Print 
-			<< (mode ? U"Echo" : U"Trans")
-			<< U" (x, y): " << (DirUtil::DirToPoint(dir))
-			<< U" id: " << id;
+		HashTable<Role, Texture> table;
+
+		for (const auto& elm : object[U"paths"].arrayView())
+		{
+			for (const auto& item : elm.objectView())
+			{
+				uint8_t roleId = Parse<uint8_t>(item.name);
+				Role role = static_cast<Role>(roleId);
+				table.emplace(role, Texture(basePath + item.value.getString()));
+			}
+		}
+
+		return table;
 	}
+
+private:
+	TextureUtil() {}
 };
