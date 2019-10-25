@@ -14,7 +14,8 @@ void Main()
 	constexpr Point offset(20, 40);
 
 	const int paletteSize = 55;
-	constexpr Point palletePos(600, 40);
+	const int wrapCount = 5;
+	constexpr Point palletePos(555, 100);
 
 	JSONReader json(U"./block/textures.json");
 	HashTable<Role, Texture> textureTable = TextureUtil::GetTextureTable(json, U"./block/");
@@ -107,10 +108,26 @@ void Main()
 		}
 
 		{
-			int i = 0;
+			// 全てのブロックの描画 (パレット)
+			// コア
+			{
+				const Rect rect = Rect(paletteSize * 2, paletteSize).movedBy(555, 40);
+
+				rect(textureTable[Role::PureCore]).draw();
+
+				if (rect.leftClicked())
+				{
+					select.RoleType = Role::PureCore;
+				}
+			}
+
+			// コア以外
+			int dx = 0, dy = 0;
 			for (const auto& [key, value] : textureTable)
 			{
-				const Rect rect = Rect(paletteSize, i * paletteSize, paletteSize).movedBy(palletePos);
+				if (key == Role::PureCore) continue;
+
+				const Rect rect = Rect(dx * paletteSize, dy * paletteSize, paletteSize).movedBy(palletePos);
 
 				rect(value).draw();
 
@@ -119,7 +136,12 @@ void Main()
 					select.RoleType = key;
 				}
 
-				i++;
+				dy++;
+				if (dy >= wrapCount)
+				{
+					dx++;
+					dy = 0;
+				}
 			}
 		}
 
@@ -128,8 +150,9 @@ void Main()
 		{
 			// 選択中のブロックを右下に描画
 			textureTable[select.RoleType]
+				.resized(select.RoleType == Role::PureCore ? 160 : 80, 80)
 				.rotated(static_cast<int>(selectedDir) * 90_deg)
-				.draw(600, 400);
+				.draw(555, 400);
 		}
 
 		if (Mouse::Wheel() > 0 || KeyLeft.down())
