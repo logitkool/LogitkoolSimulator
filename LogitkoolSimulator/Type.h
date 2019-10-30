@@ -9,12 +9,16 @@ enum class Direction : int
 	Right
 };
 
-enum ConnectionType
+const int NUM_DIRECTION = 4;
+
+enum class ConnectionType : int
 {
-	Forward,
+	Forward = 0,
 	Broadcast,
 	OtherPort
 };
+
+const int NUM_CONTYPE = 3;
 
 enum class Type : uint8_t
 {

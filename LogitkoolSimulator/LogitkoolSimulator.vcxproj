@@ -198,6 +198,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Block.cpp" />
+    <ClCompile Include="ConnectionManager.cpp" />
     <ClCompile Include="CoreBlock.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MoveBlock.cpp" />

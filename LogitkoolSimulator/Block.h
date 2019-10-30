@@ -7,8 +7,9 @@ class Block
 {
 public:
 	virtual void Receive(Packet pkt) {}
+	virtual bool Connect(const std::shared_ptr<Block>& blk, Direction side);
 
-	bool getLed()
+	bool GetLed()
 	{
 		return ledState;
 	}
@@ -26,6 +27,8 @@ protected:
 	BlockId id;
 	Direction dir;
 	bool ledState = false;
+
+	virtual bool canConnect(const std::shared_ptr<Block>& blk, Direction side);
 
 public:
 	Block(const BlockId& _id);

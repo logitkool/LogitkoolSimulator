@@ -8,6 +8,8 @@ class CoreBlock : public Block
 {
 public:
 	void Receive(Packet packet);
+	void Scan();
+	bool Connect(const std::shared_ptr<Block>& blk, Direction side) override;
 
 private:
 	void sendToBlock(Packet packet);

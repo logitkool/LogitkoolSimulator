@@ -2,6 +2,8 @@
 
 void MoveBlock::Receive(Packet packet)
 {
+	Print << U"[MoveBlock] incomming packet.";
+
 	switch (packet.command)
 	{
 	case Command::ASK:
@@ -163,7 +165,7 @@ void MoveBlock::sendConPort(Packet packet)
 MoveBlock::MoveBlock(const BlockId& _id) : Block(_id)
 {
 	is_recieved = false;
-	mode = Mode::PRODUCTION;
+	mode = Mode::DEBUG;
 }
 
 MoveBlock::MoveBlock(const MoveBlock& blk) : Block(blk)

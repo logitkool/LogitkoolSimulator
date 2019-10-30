@@ -9,7 +9,7 @@ const int MAX_ID = 4;
 class MoveBlock : public Block
 {
 public:
-	void Receive(Packet packet);
+	void Receive(Packet packet) override;
 
 	void SetMode(const Mode& _mode)
 	{
@@ -24,7 +24,7 @@ private:
 	// パケットを処理しても良いかどうか (configモード中等はfalse)
 	bool canProcess()
 	{
-		return mode != Mode::PRODUCTION && mode != Mode::DEBUG;
+		return mode == Mode::PRODUCTION || mode == Mode::DEBUG;
 	}
 
 	// すでに受信済みか

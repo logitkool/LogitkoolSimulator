@@ -20,7 +20,7 @@ void Main()
 	JSONReader json(U"./block/textures.json");
 	HashTable<Role, Texture> textureTable = TextureUtil::GetTextureTable(json, U"./block/");
 
-	Grid<Optional<Block>> cells(cellSize, cellSize);
+	Grid<Optional<std::shared_ptr<Block>>> cells(cellSize, cellSize);
 
 	BlockId select = { Role::None, 0x80, 0x01 };
 	Direction selectedDir = Direction::Down;
@@ -39,13 +39,12 @@ void Main()
 		{
 			for (auto x = 0; x < size; x++)
 			{
+				auto& blk = cells.at(y, x);
 				const Rect rect = Rect(x * cellSize, y * cellSize, cellSize).movedBy(offset);
-
-				auto& blk = cells[y][x];
 
 				if (blk.has_value())
 				{
-					cellDraw(blk->GetRole(), blk->GetDir(), rect);
+					cellDraw(blk.value()->GetRole(), blk.value()->GetDir(), rect);
 				}
 
 				// 格子の描画
@@ -59,7 +58,7 @@ void Main()
 				if (rect.leftClicked())
 				{
 					if (select.RoleType == Role::PureCore
-						&& cells.any([](const Optional<Block>& blk) { return blk.has_value() && blk->GetRole() == Role::PureCore; }))
+						&& cells.any([](const Optional<std::shared_ptr<Block>>& blk) { return blk.has_value() && blk.value()->GetRole() == Role::PureCore; }))
 					{
 						// 一つ以上のコアブロックは追加できない
 					}
@@ -71,21 +70,40 @@ void Main()
 							if (TypeUtil::IsSameType(Type::Core, select.RoleType))
 							{
 								// コアブロック
-								blk = CoreBlock(select);
+								blk = (std::shared_ptr<Block>)std::make_shared<CoreBlock>(select);
 							}
 							else if (TypeUtil::IsSameType(Type::If, select.RoleType) || TypeUtil::IsSameType(Type::For, select.RoleType))
 							{
 								// 分岐/繰り返しブロック
 								// not implemented
+								System::ShowMessageBox(U"分岐/繰り返しブロックはまだ実装されてないよ", MessageBoxStyle::Error);
+								continue;
 							}
 							else
 							{
 								// 動作ブロック
-								blk = MoveBlock(select);
+								blk = (std::shared_ptr<Block>)std::make_shared<MoveBlock>(select);
 							}
-							blk->SetDir(selectedDir);
+							blk.value()->SetDir(selectedDir);
 
-							// increment id
+							// ConnectionManagerに接続を登録
+							for (auto i : Iota(NUM_DIRECTION))
+							{
+								Direction dir = static_cast<Direction>(i);
+								auto p = Point(x, y) + DirUtil::DirToPoint(dir);
+
+								if (cells[p].has_value())
+								{
+									Direction sideFromBlk = DirUtil::DirLookedFromBlock(blk.value()->GetDir(), dir),
+										sideFromTarget = DirUtil::DirLookedFromBlock(cells[p].value()->GetDir(), DirUtil::Invert(dir));
+
+									// Print << U"blk[{}] -> tgt[{}]"_fmt(static_cast<int>(sideFromBlk), static_cast<int>(sideFromTarget));
+									Print << U"blk: " << blk.value()->Connect(cells[p].value(), sideFromBlk);
+									Print << U"tgt: " << cells[p].value()->Connect(blk.value(), sideFromTarget);
+								}
+							}
+
+							// IDをインクリメント
 							if (select.Uid_L == 0xFF)
 							{
 								select.Uid_H++;
@@ -99,10 +117,23 @@ void Main()
 
 				if (rect.rightClicked())
 				{
+					// ConnectionManagerから接続を削除
+					for (auto i : Iota(NUM_DIRECTION))
+					{
+						Direction dir = static_cast<Direction>(i);
+						auto p = Point(x, y) + DirUtil::DirToPoint(dir);
+
+						if (cells[p].has_value())
+						{
+							singleton<ConnectionManager>::get_instance().DisconnectOne(blk.value()->Id(), cells[p].value()->Id());
+							singleton<ConnectionManager>::get_instance().DisconnectOne(cells[p].value()->Id(), blk.value()->Id());
+						}
+					}
+
 					blk = none;
 				}
 
-				BlockId id = blk.has_value() ? blk->Id() : None;
+				BlockId id = blk.has_value() ? blk.value()->Id() : None;
 				font(U"{:02X}\n{:02X}.{:02X}"_fmt(id.RoleId(), id.Uid_H, id.Uid_L)).draw(rect.pos, Palette::Purple);
 			}
 		}
@@ -111,7 +142,7 @@ void Main()
 			// 全てのブロックの描画 (パレット)
 			// コア
 			{
-				const Rect rect = Rect(paletteSize * 2, paletteSize).movedBy(555, 40);
+				const Rect rect = Rect(paletteSize, paletteSize).movedBy(555, 40);
 
 				rect(textureTable[Role::PureCore]).draw();
 
@@ -150,7 +181,7 @@ void Main()
 		{
 			// 選択中のブロックを右下に描画
 			textureTable[select.RoleType]
-				.resized(select.RoleType == Role::PureCore ? 160 : 80, 80)
+				.resized(80)
 				.rotated(static_cast<int>(selectedDir) * 90_deg)
 				.draw(555, 400);
 		}
@@ -165,32 +196,25 @@ void Main()
 		}
 
 
-		if (KeySpace.down())
+		if (KeySpace.down()
+			&& cells.any([](const Optional<std::shared_ptr<Block>>& blk) { return blk.has_value() && blk.value()->GetRole() == Role::PureCore; }))
 		{
-			/*auto& core = cells[corePos];
-			auto nextToCore = corePos + DirUtil::DirToPoint(core.GetDir());
-
-			Packet corePkt = { TMode::Echo, core.GetId(), core.GetDir() };
-
-			int step = 100;
-			Array<int> idList;
-			auto pos = nextToCore;
-			auto pkt = cells[pos].Input(corePkt);
-			while (pkt.id != -1)
+			Point corePos;
+			cells.each_index([&corePos](const Point& pos, const Optional<std::shared_ptr<Block>>& blk)
 			{
-				pos += DirUtil::DirToPoint(pkt.dir);
-
-				if (cells[pos].block == Block::Core)
+				if (blk.has_value() && blk.value()->GetRole() == Role::PureCore)
 				{
-					idList.push_back(pkt.id);
-					pkt = corePkt;
-					pos = nextToCore;
+					corePos = pos;
 				}
+			});
+			auto& core = (std::shared_ptr<CoreBlock>&)(cells[corePos].value());
 
-				pkt = cells[pos].Input(pkt);
-			}
+			core->Scan();
+		}
 
-			Print << idList;*/
+		if (KeyM.down())
+		{
+			singleton<ConnectionManager>::get_instance().Print();
 		}
 
 	}

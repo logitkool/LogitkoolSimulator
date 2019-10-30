@@ -67,6 +67,18 @@ public:
 		}
 	}
 
+	// ブロックから見た向きがグリッド平面上でどちら向きか
+	static Direction DirLookedFromGrid(Direction baseDir, Direction side)
+	{
+		return static_cast<Direction>((static_cast<int>(baseDir) + static_cast<int>(side)) % NUM_DIRECTION);
+	}
+
+	// グリッド平面上で見た向きはブロックにとってはどちら向きか
+	static Direction DirLookedFromBlock(Direction baseDir, Direction gridDir)
+	{
+		int dir = (NUM_DIRECTION - static_cast<int>(baseDir)) % NUM_DIRECTION;
+		return DirLookedFromGrid(static_cast<Direction>(dir), gridDir);
+	}
 
 	static Direction Invert(Direction dir)
 	{
